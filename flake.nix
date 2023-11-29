@@ -4,22 +4,44 @@
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
   in {
-    packages.${system}.benchmark = pkgs.runCommand "nix-git-shallow-benchmark"
-      {
-        buildInputs = [
-          pkgs.bash
-          pkgs.coreutils
-          pkgs.git
-          # ssl certificates
-          pkgs.cacert
-        ];
-        __impure = true;
-      }
-      ''
-        export WORKDIR=$(realpath .)
-        ${./test-providers-treeless.sh}
-        mkdir $out
-        mv result.csv $out/result.csv
-      '';
+    packages.${system} = {
+      benchmark = pkgs.runCommand "nix-git-shallow-benchmark"
+        {
+          buildInputs = [
+            pkgs.bash
+            pkgs.coreutils
+            pkgs.git
+            # ssl certificates
+            pkgs.cacert
+          ];
+          __impure = true;
+        }
+        ''
+          export WORKDIR=$(realpath .)
+          bash ${./test-providers-treeless.sh}
+          mkdir $out
+          mv result.csv $out/result.csv
+        '';
+
+      benchmark-fod = pkgs.runCommand "nix-git-shallow-benchmark"
+        {
+          buildInputs = [
+            pkgs.bash
+            pkgs.coreutils
+            pkgs.git
+            # ssl certificates
+            pkgs.cacert
+          ];
+          outputHashAlgo = "sha256";
+          outputHashMode = "recursive";
+          outputHash = "";
+        }
+        ''
+          export WORKDIR=$(realpath .)
+          bash ${./test-providers-treeless.sh}
+          cat result.csv
+          touch $out
+        '';
+    };
   };
 }
