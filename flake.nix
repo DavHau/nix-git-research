@@ -34,7 +34,7 @@
           ];
           outputHashAlgo = "sha256";
           outputHashMode = "recursive";
-          outputHash = "";
+          outputHash = "sha256-d6xi4mKdjkX2JFicDIv5niSzpyI0m/Hnm8GGAIU04kY=";
         }
         ''
           export WORKDIR=$(realpath .)
