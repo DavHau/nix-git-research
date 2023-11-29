@@ -14,40 +14,54 @@ WORKDIR=${WORKDIR:-/tmp/nix-git-benchmark}
 echo "Git version: $(git --version)"
 echo "date: $(date)"
 csvFile="$WORKDIR/result.csv"
+GITDIR="$WORKDIR/repo"
+mkdir -p "$WORKDIR"
 echo "repo,shallow duration,treeless duration,combined duration" > "$csvFile"
 
+writeCsv() {
+  echo "$1,$2,$3,$4" >> "$csvFile"
+}
+
 for repo in "${repos[@]}"; do
-  echo "Testing $repo"
+  echo "Running benchmark on $repo"
   # get latest revision
   rev=$(git ls-remote "$repo" HEAD | head -n 1 | cut -f1)
   echo "rev: $rev"
-  rm -rf "$WORKDIR"
-  mkdir -p "$WORKDIR"
-  cd "$WORKDIR"
+  rm -rf "$GITDIR"
+  mkdir -p "$GITDIR"
+  cd "$GITDIR"
   git init
   git remote add origin "$repo"
 
   echo "Fetching tree for $rev with --depth 1"
   start=$(date +%s%N)
-  git fetch origin "$rev" --depth 1 --porcelain
-  shallowDuration=$((($(date +%s%N) - $start)/1000000000))
-  echo Fetching tree took $shallowDuration seconds.
-  revCount=$(git rev-list --count "$rev")
+  if git fetch origin "$rev" --depth 1; then
+    shallowDuration=$((($(date +%s%N) - $start)/1000000000))
+    echo Fetching tree took $shallowDuration seconds.
+  else
+    echo "Fetching tree failed"
+    writeCsv "$repo" failed failed failed
+    continue
+  fi
 
   echo "Fetching treeless history for $rev with --filter=tree:0"
   start=$(date +%s%N)
-  git fetch origin $rev --filter=tree:0 --unshallow
-  treelessDuration=$((($(date +%s%N) - $start)/1000000000))
-  echo Fetching treeless history took $treelessDuration seconds.
-  revCount=$(git rev-list --count "$rev")
-  echo "revCount: $revCount"
-  # error if revCount is lower than 2
-  if [ "$revCount" -lt 2 ]; then
-    echo "revCount is lower than 2"
-    exit 1
+  if git fetch origin $rev --filter=tree:0 --unshallow; then
+    treelessDuration=$((($(date +%s%N) - $start)/1000000000))
+    echo Fetching treeless history took $treelessDuration seconds.
+    revCount=$(git rev-list --count "$rev")
+    echo "revCount: $revCount"
+    # error if revCount is lower than 2
+    if [ "$revCount" -lt 2 ]; then
+      echo "revCount is lower than 2"
+      exit 1
+    fi
+  else
+    echo "Fetching treeless history failed"
+    writeCsv "$repo" "$shallowDuration" failed failed
   fi
 
   # write results to csv file
-  echo "$repo,$shallowDuration,$treelessDuration,$((shallowDuration+treelessDuration))" >> "$csvFile"
+  writeCsv "$repo" "$shallowDuration" "$treelessDuration" "$((shallowDuration + treelessDuration))"
 done
 
