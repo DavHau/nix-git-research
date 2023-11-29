@@ -16,10 +16,10 @@ echo "date: $(date)"
 csvFile="$WORKDIR/result.csv"
 GITDIR="$WORKDIR/repo"
 mkdir -p "$WORKDIR"
-echo "repo,shallow seconds,treeless seconds,rev-count seconds,combined duration" > "$csvFile"
+echo "repo,shallow seconds,treeless seconds,rev-count seconds" > "$csvFile"
 
 writeCsv() {
-  echo "$1,$2,$3,$4,$5" >> "$csvFile"
+  echo "$1,$2,$3,$4" >> "$csvFile"
 }
 
 for repo in "${repos[@]}"; do
@@ -40,7 +40,7 @@ for repo in "${repos[@]}"; do
     echo Fetching tree took $shallowDuration seconds.
   else
     echo "Fetching tree failed"
-    writeCsv "$repo" failed failed failed failed
+    writeCsv "$repo" failed failed failed
     continue
   fi
 
@@ -53,16 +53,17 @@ for repo in "${repos[@]}"; do
     start=$(date +%s%N)
     revCount=$(git rev-list --count "$rev")
     revCountDuration=$((($(date +%s%N) - $start)/1000000000))
+    echo "counting revisions took $revCountDuration seconds"
     echo "revCount: $revCount"
     # error if revCount is lower than 2
     if [ "$revCount" -lt 2 ]; then
       echo "revCount is lower than 2"
       exit 1
     fi
-    writeCsv "$repo" "$shallowDuration" "$treelessDuration" "$revCountDuration" "$((shallowDuration + treelessDuration))"
+    writeCsv "$repo" "$shallowDuration" "$treelessDuration" "$revCountDuration"
   else
     echo "Fetching treeless history failed"
-    writeCsv "$repo" "$shallowDuration" failed failed failed
+    writeCsv "$repo" "$shallowDuration" failed failed
   fi
 
 done
